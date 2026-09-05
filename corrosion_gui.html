@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Surface Corrosion Detector — Control Panel</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg:        #0c0e12;
+    --bg2:       #13161d;
+    --bg3:       #1a1e28;
+    --border:    #252a38;
+    --accent:    #00e5ff;
+    --accent2:   #ff4c6a;
+    --accent3:   #a78bfa;
+    --text:      #e2e8f0;
+    --muted:     #64748b;
+    --success:   #22c55e;
+    --warn:      #f59e0b;
+    --mono:      'Space Mono', monospace;
+    --sans:      'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,229,255,0.015) 2px, rgba(0,229,255,0.015) 4px);
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 32px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .logo-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 10px var(--accent);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(0.8)} }
+
+  .status-bar {
+    display: flex; gap: 16px; align-items: center;
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+  }
+  .status-chip {
+    padding: 3px 10px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+  }
+  .status-chip.ok { border-color: var(--success); color: var(--success); }
+  .status-chip.warn { border-color: var(--warn); color: var(--warn); }
+
+  /* ── Layout ── */
+  .shell {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    min-height: calc(100vh - 57px);
+  }
+
+  /* ── Sidebar ── */
+  nav {
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    padding: 24px 0;
+  }
+  .nav-section {
+    padding: 0 16px;
+    margin-bottom: 6px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: .15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 20px;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--muted);
+    transition: all .15s;
+    border-left: 2px solid transparent;
+    user-select: none;
+  }
+  .nav-item:hover { color: var(--text); background: var(--bg3); }
+  .nav-item.active {
+    color: var(--accent);
+    border-left-color: var(--accent);
+    background: rgba(0,229,255,.06);
+  }
+  .nav-icon { font-size: 15px; width: 18px; text-align: center; }
+
+  /* ── Main content ── */
+  main { padding: 32px; overflow-y: auto; }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; animation: fadeIn .2s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+
+  /* ── Section title ── */
+  .section-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 12px;
+    font-family: var(--mono);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    margin-bottom: 16px;
+  }
+
+  /* ── Form elements ── */
+  .form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  label {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: var(--mono);
+    letter-spacing: .05em;
+  }
+  input[type=text], input[type=number], select, textarea {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 8px 12px;
+    outline: none;
+    transition: border-color .15s;
+    width: 100%;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  select option { background: var(--bg2); }
+  textarea { resize: vertical; min-height: 60px; }
+
+  /* toggle */
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .toggle-row:last-child { border-bottom: none; }
+  .toggle-label { font-size: 13px; color: var(--text); }
+  .toggle-desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .toggle {
+    position: relative; width: 36px; height: 20px;
+    cursor: pointer; flex-shrink: 0;
+  }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-track {
+    position: absolute; inset: 0;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    transition: background .2s;
+  }
+  .toggle input:checked + .toggle-track { background: var(--accent); border-color: var(--accent); }
+  .toggle-thumb {
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: transform .2s, background .2s;
+  }
+  .toggle input:checked ~ .toggle-thumb { transform: translateX(16px); background: var(--bg); }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 20px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all .15s;
+    user-select: none;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg);
+    font-weight: 700;
+  }
+  .btn.primary:hover { background: #00c4db; }
+  .btn.danger { border-color: var(--accent2); color: var(--accent2); }
+  .btn.danger:hover { background: rgba(255,76,106,.1); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+
+  /* ── Terminal / log ── */
+  .terminal {
+    background: #070a0e;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 14px 16px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.7;
+    min-height: 220px;
+    max-height: 340px;
+    overflow-y: auto;
+    color: #94a3b8;
+  }
+  .log-line { display: block; }
+  .log-line .ts { color: var(--muted); margin-right: 8px; }
+  .log-line .info { color: var(--accent); }
+  .log-line .warn { color: var(--warn); }
+  .log-line .error { color: var(--accent2); }
+  .log-line .success { color: var(--success); }
+  .log-line .cmd { color: var(--accent3); }
+  .cursor { display: inline-block; width: 7px; height: 13px; background: var(--accent); animation: blink 1s step-end infinite; vertical-align: text-bottom; }
+  @keyframes blink { 50%{opacity:0} }
+
+  /* ── Progress ── */
+  .progress-wrap { margin: 12px 0; }
+  .progress-label {
+    display: flex; justify-content: space-between;
+    font-family: var(--mono); font-size: 11px;
+    color: var(--muted); margin-bottom: 5px;
+  }
+  .progress-bar {
+    height: 4px;
+    background: var(--bg3);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width .4s ease;
+    box-shadow: 0 0 8px var(--accent);
+  }
+  .progress-fill.warm { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+  .progress-fill.purple { background: var(--accent3); box-shadow: 0 0 8px var(--accent3); }
+
+  /* ── Metric tiles ── */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .metric-tile {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 14px 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .metric-tile::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: var(--accent);
+  }
+  .metric-tile.warm::before { background: var(--warn); }
+  .metric-tile.purple::before { background: var(--accent3); }
+  .metric-tile.red::before { background: var(--accent2); }
+  .metric-val {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .metric-name { font-size: 11px; color: var(--muted); }
+
+  /* ── Class bars ── */
+  .class-bars { display: flex; flex-direction: column; gap: 8px; }
+  .class-row { display: flex; align-items: center; gap: 10px; }
+  .class-name { font-family: var(--mono); font-size: 11px; color: var(--muted); width: 130px; flex-shrink: 0; }
+  .class-bar-wrap { flex: 1; background: var(--bg3); border-radius: 2px; height: 6px; }
+  .class-bar-fill { height: 100%; border-radius: 2px; transition: width .6s cubic-bezier(.4,0,.2,1); }
+  .class-val { font-family: var(--mono); font-size: 11px; color: var(--text); width: 40px; text-align: right; }
+
+  /* ── Upload drop zone ── */
+  .dropzone {
+    border: 2px dashed var(--border);
+    border-radius: 6px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .2s;
+    position: relative;
+  }
+  .dropzone:hover, .dropzone.dragover {
+    border-color: var(--accent);
+    background: rgba(0,229,255,.04);
+  }
+  .dropzone input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer;
+    width: 100%; height: 100%;
+  }
+  .dropzone-icon { font-size: 32px; margin-bottom: 10px; }
+  .dropzone-text { font-size: 13px; color: var(--muted); }
+  .dropzone-text strong { color: var(--accent); }
+
+  /* ── Prediction result ── */
+  .pred-result {
+    display: none;
+    margin-top: 20px;
+    gap: 20px;
+    grid-template-columns: 200px 1fr;
+  }
+  .pred-result.show { display: grid; animation: fadeIn .3s ease; }
+  .pred-img {
+    width: 200px; height: 200px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+  .pred-img-placeholder {
+    width: 200px; height: 200px;
+    background: var(--bg3);
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 40px;
+    color: var(--muted);
+  }
+  .pred-label {
+    font-family: var(--mono);
+    font-size: 26px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .pred-confidence {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  /* ── Command preview ── */
+  .cmd-preview {
+    background: #070a0e;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent3);
+    word-break: break-all;
+    display: flex; align-items: flex-start; gap: 10px;
+    margin-top: 12px;
+  }
+  .cmd-preview .prompt { color: var(--success); flex-shrink: 0; }
+  .copy-btn {
+    margin-left: auto; flex-shrink: 0;
+    background: none; border: 1px solid var(--border);
+    color: var(--muted); font-family: var(--mono); font-size: 10px;
+    padding: 2px 8px; border-radius: 3px; cursor: pointer;
+    transition: all .15s;
+  }
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Epoch chart ── */
+  .epoch-chart {
+    position: relative;
+    height: 120px;
+    margin: 16px 0;
+  }
+  .epoch-chart canvas { width: 100% !important; height: 120px !important; }
+
+  /* ── Config diff highlight ── */
+  .config-field-changed {
+    border-color: var(--warn) !important;
+    box-shadow: 0 0 0 1px rgba(245,158,11,.2);
+  }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg2); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* responsive */
+  @media(max-width:680px){
+    .shell{grid-template-columns:1fr}
+    nav{display:flex;overflow-x:auto;padding:8px;border-right:none;border-bottom:1px solid var(--border)}
+    .nav-section{display:none}
+    .nav-item{flex-direction:column;gap:4px;padding:8px 14px;font-size:10px;border-left:none;border-bottom:2px solid transparent}
+    .nav-item.active{border-left:none;border-bottom-color:var(--accent)}
+    .nav-icon{font-size:18px}
+    main{padding:16px}
+    .form-row{grid-template-columns:1fr}
+    .pred-result{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    NEU Surface Defect — Control Panel
+  </div>
+  <div class="status-bar">
+    <span class="status-chip ok">● CPU</span>
+    <span class="status-chip" id="ckptStatus">No checkpoint</span>
+    <span class="status-chip" style="color:var(--muted)">v1.0.0</span>
+  </div>
+</header>
+
+<div class="shell">
+
+  <!-- Sidebar -->
+  <nav>
+    <div class="nav-section">Workflow</div>
+    <div class="nav-item active" data-tab="train" onclick="switchTab('train')">
+      <span class="nav-icon">⚡</span> Train
+    </div>
+    <div class="nav-item" data-tab="evaluate" onclick="switchTab('evaluate')">
+      <span class="nav-icon">📊</span> Evaluate
+    </div>
+    <div class="nav-item" data-tab="predict" onclick="switchTab('predict')">
+      <span class="nav-icon">🔍</span> Predict
+    </div>
+    <div class="nav-item" data-tab="export" onclick="switchTab('export')">
+      <span class="nav-icon">📦</span> Export ONNX
+    </div>
+    <div class="nav-section">Config</div>
+    <div class="nav-item" data-tab="config" onclick="switchTab('config')">
+      <span class="nav-icon">⚙️</span> Config
+    </div>
+    <div class="nav-item" data-tab="classes" onclick="switchTab('classes')">
+      <span class="nav-icon">🏷️</span> Classes
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <main>
+
+    <!-- ── TRAIN ── -->
+    <div class="tab-panel active" id="tab-train">
+      <div class="section-title">Training</div>
+
+      <div class="card">
+        <div class="card-title">Architecture & Checkpoint</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Architecture</label>
+            <select id="arch" onchange="updateCmd()">
+              <option value="resnet50">ResNet-50</option>
+              <option value="resnet18">ResNet-18</option>
+              <option value="efficientnet_b3" selected>EfficientNet-B3</option>
+              <option value="mobilenet_v3_large">MobileNetV3-Large</option>
+              <option value="custom_cnn">Custom CNN</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Resume Checkpoint (optional)</label>
+            <input type="text" id="resumeCkpt" placeholder="models/checkpoints/ckpt_ep010.pth" oninput="updateCmd()">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Hyperparameters</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Epochs</label>
+            <input type="number" id="epochs" value="5" min="1" max="200" oninput="updateCmd()">
+          </div>
+          <div class="form-group">
+            <label>Batch Size</label>
+            <input type="number" id="batchSize" value="8" min="1" oninput="updateCmd()">
+          </div>
+          <div class="form-group">
+            <label>Learning Rate</label>
+            <input type="number" id="lr" value="0.0001" step="0.00001" oninput="updateCmd()">
+          </div>
+          <div class="form-group">
+            <label>Weight Decay</label>
+            <input type="number" id="wd" value="0.0001" step="0.00001" oninput="updateCmd()">
+          </div>
+          <div class="form-group">
+            <label>Freeze Epochs</label>
+            <input type="number" id="freezeEpochs" value="5" min="0" oninput="updateCmd()">
+          </div>
+          <div class="form-group">
+            <label>Patience (Early Stop)</label>
+            <input type="number" id="patience" value="15" min="1" oninput="updateCmd()">
+          </div>
+        </div>
+
+        <div class="card-title" style="margin-top:12px">Options</div>
+        <div class="toggle-row">
+          <div><div class="toggle-label">Pretrained weights</div><div class="toggle-desc">ImageNet pretrained backbone</div></div>
+          <label class="toggle"><input type="checkbox" id="pretrained" checked onchange="updateCmd()"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+        </div>
+        <div class="toggle-row">
+          <div><div class="toggle-label">Label smoothing</div><div class="toggle-desc">ε = 0.1</div></div>
+          <label class="toggle"><input type="checkbox" id="labelSmooth" checked onchange="updateCmd()"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+        </div>
+        <div class="toggle-row">
+          <div><div class="toggle-label">Augmentation</div><div class="toggle-desc">Flip, rotate, colour jitter, erasing</div></div>
+          <label class="toggle"><input type="checkbox" id="augment" checked onchange="updateCmd()"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Generated Command</div>
+        <div class="cmd-preview" id="cmdPreview">
+          <span class="prompt">$</span>
+          <span id="cmdText">python src/train.py --arch efficientnet_b3 --epochs 5</span>
+          <button class="copy-btn" onclick="copyCmd()">COPY</button>
+        </div>
+        <div class="btn-row">
+          <button class="btn primary" onclick="startSimulation()">▶ Run Training</button>
+          <button class="btn" onclick="stopSimulation()" id="stopBtn" disabled>■ Stop</button>
+          <button class="btn" onclick="clearLog()">Clear Log</button>
+        </div>
+      </div>
+
+      <!-- Live metrics while "training" -->
+      <div class="card" id="liveMetrics" style="display:none">
+        <div class="card-title">Live Metrics</div>
+        <div class="metrics-grid">
+          <div class="metric-tile"><div class="metric-val" id="liveEpoch">0/5</div><div class="metric-name">Epoch</div></div>
+          <div class="metric-tile warm"><div class="metric-val" id="liveLoss">—</div><div class="metric-name">Train Loss</div></div>
+          <div class="metric-tile purple"><div class="metric-val" id="liveValLoss">—</div><div class="metric-name">Val Loss</div></div>
+          <div class="metric-tile"><div class="metric-val" id="liveAcc">—</div><div class="metric-name">Val Acc</div></div>
+          <div class="metric-tile"><div class="metric-val" id="liveF1">—</div><div class="metric-name">Val F1</div></div>
+          <div class="metric-tile red"><div class="metric-val" id="liveLR">—</div><div class="metric-name">LR</div></div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-label"><span>Epoch progress</span><span id="epochPct">0%</span></div>
+          <div class="progress-bar"><div class="progress-fill" id="epochBar" style="width:0%"></div></div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-label"><span>Overall</span><span id="overallPct">0%</span></div>
+          <div class="progress-bar"><div class="progress-fill purple" id="overallBar" style="width:0%"></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Output Log</div>
+        <div class="terminal" id="trainLog"><span class="log-line"><span class="ts">[ready]</span> Configure parameters above and click Run Training.<span class="cursor"></span></span></div>
+      </div>
+    </div>
+
+    <!-- ── EVALUATE ── -->
+    <div class="tab-panel" id="tab-evaluate">
+      <div class="section-title">Evaluation</div>
+
+      <div class="card">
+        <div class="card-title">Settings</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Checkpoint Path</label>
+            <input type="text" id="evalCkpt" value="models/checkpoints/best_model.pth" oninput="updateEvalCmd()">
+          </div>
+          <div class="form-group">
+            <label>Split</label>
+            <select id="evalSplit" onchange="updateEvalCmd()">
+              <option value="test" selected>test</option>
+              <option value="val">val</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Batch Size</label>
+            <input type="number" id="evalBatch" value="32" oninput="updateEvalCmd()">
+          </div>
+        </div>
+        <div class="toggle-row">
+          <div><div class="toggle-label">Test-Time Augmentation (TTA)</div><div class="toggle-desc">Average predictions over augmented views</div></div>
+          <label class="toggle"><input type="checkbox" id="evalTTA" onchange="updateEvalCmd()"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+        </div>
+        <div class="cmd-preview" id="evalCmd">
+          <span class="prompt">$</span>
+          <span id="evalCmdText">python src/evaluate.py --checkpoint models/checkpoints/best_model.pth --split test --batch_size 32</span>
+          <button class="copy-btn" onclick="copyEvalCmd()">COPY</button>
+        </div>
+        <div class="btn-row">
+          <button class="btn primary" onclick="runEvalSim()">▶ Run Evaluation</button>
+          <button class="btn" onclick="clearEvalLog()">Clear Log</button>
+        </div>
+      </div>
+
+      <!-- Sample results (pre-filled demo) -->
+      <div class="card" id="evalResults" style="display:none">
+        <div class="card-title">Results</div>
+        <div class="metrics-grid">
+          <div class="metric-tile"><div class="metric-val" id="top1">—</div><div class="metric-name">Top-1 Acc</div></div>
+          <div class="metric-tile warm"><div class="metric-val" id="top2">—</div><div class="metric-name">Top-2 Acc</div></div>
+          <div class="metric-tile purple"><div class="metric-val" id="macroF1">—</div><div class="metric-name">Macro F1</div></div>
+        </div>
+
+        <div class="card-title" style="margin-top:4px">Per-Class F1</div>
+        <div class="class-bars" id="classF1Bars"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Log</div>
+        <div class="terminal" id="evalLog"><span class="log-line"><span class="ts">[ready]</span> Configure and click Run Evaluation.<span class="cursor"></span></span></div>
+      </div>
+    </div>
+
+    <!-- ── PREDICT ── -->
+    <div class="tab-panel" id="tab-predict">
+      <div class="section-title">Predict</div>
+
+      <div class="card">
+        <div class="card-title">Settings</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Checkpoint Path</label>
+            <input type="text" id="predCkpt" value="models/checkpoints/best_model.pth" oninput="updatePredCmd()">
+          </div>
+          <div class="form-group">
+            <label>Input Path (image or folder)</label>
+            <input type="text" id="predInput" value="data/splits/test/Crazing/crazing_10.jpg" oninput="updatePredCmd()">
+          </div>
+          <div class="form-group">
+            <label>Top-K</label>
+            <input type="number" id="predTopK" value="3" min="1" max="6" oninput="updatePredCmd()">
+          </div>
+        </div>
+        <div class="toggle-row">
+          <div><div class="toggle-label">Grad-CAM</div><div class="toggle-desc">Generate activation heatmaps</div></div>
+          <label class="toggle"><input type="checkbox" id="predGradcam" checked onchange="updatePredCmd()"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+        </div>
+        <div class="toggle-row">
+          <div><div class="toggle-label">Save JSON</div><div class="toggle-desc">Export predictions.json</div></div>
+          <label class="toggle"><input type="checkbox" id="predJson" onchange="updatePredCmd()"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+        </div>
+        <div class="cmd-preview">
+          <span class="prompt">$</span>
+          <span id="predCmdText">python src/predict.py --checkpoint models/checkpoints/best_model.pth --input data/splits/test/Crazing/crazing_10.jpg --gradcam --topk 3</span>
+          <button class="copy-btn" onclick="copyPredCmd()">COPY</button>
+        </div>
+        <div class="btn-row">
+          <button class="btn primary" onclick="runPredSim()">▶ Run Predict</button>
+        </div>
+      </div>
+
+      <!-- Demo prediction result -->
+      <div class="card">
+        <div class="card-title">Prediction Preview (demo)</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+          Drop an image below to preview a simulated prediction result.
+        </div>
+        <div class="dropzone" id="dropzone">
+          <input type="file" accept="image/*" onchange="handleImageDrop(event)">
+          <div class="dropzone-icon">🖼️</div>
+          <div class="dropzone-text">Drop image here or <strong>click to browse</strong></div>
+        </div>
+
+        <div class="pred-result" id="predResult">
+          <img class="pred-img" id="predImg" src="" alt="preview">
+          <div>
+            <div class="pred-label" id="predLabel">—</div>
+            <div class="pred-confidence" id="predConf">confidence: —</div>
+            <div class="class-bars" id="predBars"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Log</div>
+        <div class="terminal" id="predLog"><span class="log-line"><span class="ts">[ready]</span> Configure and click Run Predict.<span class="cursor"></span></span></div>
+      </div>
+    </div>
+
+    <!-- ── EXPORT ── -->
+    <div class="tab-panel" id="tab-export">
+      <div class="section-title">Export ONNX</div>
+
+      <div class="card">
+        <div class="card-title">⚠️ Architecture Auto-Detection Fix</div>
+        <p style="font-size:13px;color:var(--text);line-height:1.7;margin-bottom:12px">
+          Your <code style="color:var(--accent3);font-family:var(--mono)">best_model.pth</code> was trained as <strong>MobileNetV3</strong>
+          (keys: <code style="color:var(--accent3);font-family:var(--mono)">model.features.*</code>) but
+          <code style="color:var(--accent3);font-family:var(--mono)">config.yaml</code> says <code style="color:var(--accent3);font-family:var(--mono)">resnet50</code>.
+          The patched export script below auto-detects the architecture from the checkpoint keys.
+        </p>
+        <div class="terminal" style="min-height:auto;max-height:none;font-size:11px;line-height:1.8">
+<span style="color:#64748b"># Paste this into scripts/export_onnx.py  (replaces lines 30-36)</span>
+<span style="color:#a78bfa">ckpt</span> <span style="color:#e2e8f0">=</span> <span style="color:#00e5ff">torch</span><span style="color:#e2e8f0">.load(</span><span style="color:#22c55e">ROOT / args.checkpoint</span><span style="color:#e2e8f0">, map_location=</span><span style="color:#22c55e">"cpu"</span><span style="color:#e2e8f0">, weights_only=</span><span style="color:#f59e0b">False</span><span style="color:#e2e8f0">)</span>
+<span style="color:#a78bfa">sd</span>   <span style="color:#e2e8f0">=</span> <span style="color:#a78bfa">ckpt</span><span style="color:#e2e8f0">.get(</span><span style="color:#22c55e">"model_state_dict"</span><span style="color:#e2e8f0">, </span><span style="color:#a78bfa">ckpt</span><span style="color:#e2e8f0">)</span>
+<span style="color:#a78bfa">first_key</span> <span style="color:#e2e8f0">=</span> <span style="color:#00e5ff">next</span><span style="color:#e2e8f0">(</span><span style="color:#00e5ff">iter</span><span style="color:#e2e8f0">(</span><span style="color:#a78bfa">sd</span><span style="color:#e2e8f0">))</span>
+<span style="color:#64748b"># Auto-detect MobileNetV3 vs ResNet</span>
+<span style="color:#f59e0b">if</span> <span style="color:#a78bfa">first_key</span><span style="color:#e2e8f0">.startswith(</span><span style="color:#22c55e">"model.features"</span><span style="color:#e2e8f0">):</span>
+    <span style="color:#f59e0b">import</span> <span style="color:#00e5ff">torchvision.models</span> <span style="color:#f59e0b">as</span> <span style="color:#a78bfa">tvm</span>
+    <span style="color:#a78bfa">n</span> <span style="color:#e2e8f0">= cfg[</span><span style="color:#22c55e">"model"</span><span style="color:#e2e8f0">].get(</span><span style="color:#22c55e">"num_classes"</span><span style="color:#e2e8f0">, </span><span style="color:#f59e0b">6</span><span style="color:#e2e8f0">)</span>
+    <span style="color:#a78bfa">backbone</span> <span style="color:#e2e8f0">= tvm.mobilenet_v3_large(weights=</span><span style="color:#f59e0b">None</span><span style="color:#e2e8f0">)</span>
+    <span style="color:#a78bfa">backbone</span><span style="color:#e2e8f0">.classifier[3] = torch.nn.Linear(backbone.classifier[3].in_features, n)</span>
+    <span style="color:#a78bfa">sd_stripped</span> <span style="color:#e2e8f0">= {k.replace(</span><span style="color:#22c55e">"model."</span><span style="color:#e2e8f0">, </span><span style="color:#22c55e">""</span><span style="color:#e2e8f0">, 1): v </span><span style="color:#f59e0b">for</span> k, v <span style="color:#f59e0b">in</span> sd.items()}</span>
+    <span style="color:#a78bfa">backbone</span><span style="color:#e2e8f0">.load_state_dict(sd_stripped)</span>
+    <span style="color:#a78bfa">model</span> <span style="color:#e2e8f0">= backbone</span>
+<span style="color:#f59e0b">else</span><span style="color:#e2e8f0">:</span>
+    <span style="color:#a78bfa">cfg</span><span style="color:#e2e8f0">[</span><span style="color:#22c55e">"model"</span><span style="color:#e2e8f0">][</span><span style="color:#22c55e">"pretrained"</span><span style="color:#e2e8f0">] = </span><span style="color:#f59e0b">False</span>
+    <span style="color:#a78bfa">model</span> <span style="color:#e2e8f0">= build_model(cfg)</span>
+    <span style="color:#a78bfa">model</span><span style="color:#e2e8f0">.load_state_dict(sd)</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Export Settings</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Checkpoint Path</label>
+            <input type="text" id="expCkpt" value="models/checkpoints/best_model.pth" oninput="updateExpCmd()">
+          </div>
+          <div class="form-group">
+            <label>Output Path</label>
+            <input type="text" id="expOut" value="models/saved/corrosion_detector.onnx" oninput="updateExpCmd()">
+          </div>
+          <div class="form-group">
+            <label>ONNX Opset</label>
+            <input type="number" id="expOpset" value="17" min="11" max="20" oninput="updateExpCmd()">
+          </div>
+        </div>
+        <div class="cmd-preview">
+          <span class="prompt">$</span>
+          <span id="expCmdText">python scripts/export_onnx.py --checkpoint models/checkpoints/best_model.pth --output models/saved/corrosion_detector.onnx --opset 17</span>
+          <button class="copy-btn" onclick="copyExpCmd()">COPY</button>
+        </div>
+        <div class="btn-row">
+          <button class="btn primary" onclick="runExpSim()">▶ Run Export</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Log</div>
+        <div class="terminal" id="expLog"><span class="log-line"><span class="ts">[ready]</span> Click Run Export to simulate.<span class="cursor"></span></span></div>
+      </div>
+    </div>
+
+    <!-- ── CONFIG ── -->
+    <div class="tab-panel" id="tab-config">
+      <div class="section-title">config.yaml Editor</div>
+      <div class="card">
+        <div class="card-title">⚠️ Architecture Mismatch</div>
+        <p style="font-size:13px;color:var(--warn);line-height:1.7">
+          Current config has <code style="font-family:var(--mono)">architecture: resnet50</code> but your saved checkpoints were trained with MobileNetV3.
+          Update the field below to match your checkpoint, or retrain with ResNet-50.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Model</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>architecture</label>
+            <select id="cfgArch" onchange="markChanged(this)">
+              <option value="resnet50" selected>resnet50</option>
+              <option value="resnet18">resnet18</option>
+              <option value="efficientnet_b3">efficientnet_b3</option>
+              <option value="mobilenet_v3_large">mobilenet_v3_large</option>
+              <option value="custom_cnn">custom_cnn</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>pretrained</label>
+            <select id="cfgPretrained">
+              <option value="true" selected>true</option>
+              <option value="false">false</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>dropout</label>
+            <input type="number" id="cfgDropout" value="0.4" step="0.05" min="0" max="0.9">
+          </div>
+          <div class="form-group">
+            <label>num_classes</label>
+            <input type="number" id="cfgNumClasses" value="6" min="2" max="100">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Data</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>image_size</label>
+            <input type="number" id="cfgImgSize" value="224" min="64" max="512">
+          </div>
+          <div class="form-group">
+            <label>train_ratio</label>
+            <input type="number" id="cfgTrainRatio" value="0.70" step="0.05" min="0.5" max="0.9">
+          </div>
+          <div class="form-group">
+            <label>val_ratio</label>
+            <input type="number" id="cfgValRatio" value="0.15" step="0.05" min="0.05" max="0.3">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Training</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>epochs</label>
+            <input type="number" id="cfgEpochs" value="60">
+          </div>
+          <div class="form-group">
+            <label>batch_size</label>
+            <input type="number" id="cfgBatch" value="8">
+          </div>
+          <div class="form-group">
+            <label>lr</label>
+            <input type="number" id="cfgLR" value="0.0001" step="0.00001">
+          </div>
+          <div class="form-group">
+            <label>weight_decay</label>
+            <input type="number" id="cfgWD" value="0.0001" step="0.00001">
+          </div>
+          <div class="form-group">
+            <label>patience</label>
+            <input type="number" id="cfgPatience" value="15">
+          </div>
+          <div class="form-group">
+            <label>freeze_epochs</label>
+            <input type="number" id="cfgFreezeEp" value="5">
+          </div>
+          <div class="form-group">
+            <label>label_smoothing</label>
+            <input type="number" id="cfgSmoothing" value="0.1" step="0.05">
+          </div>
+          <div class="form-group">
+            <label>save_every</label>
+            <input type="number" id="cfgSaveEvery" value="5">
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn primary" onclick="generateYAML()">⬇ Generate YAML</button>
+        <button class="btn" onclick="copyYAML()">Copy YAML</button>
+      </div>
+      <div class="cmd-preview" id="yamlOut" style="display:none;margin-top:16px;white-space:pre;color:var(--text);font-size:11px;max-height:400px;overflow-y:auto">
+      </div>
+    </div>
+
+    <!-- ── CLASSES ── -->
+    <div class="tab-panel" id="tab-classes">
+      <div class="section-title">Class Reference</div>
+      <div class="card">
+        <div class="card-title">NEU Surface Defect — 6 Classes</div>
+        <div class="class-bars" id="classRef"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Class Distribution (300 images / class)</div>
+        <div class="metrics-grid">
+          <div class="metric-tile"><div class="metric-val">1800</div><div class="metric-name">Total Images</div></div>
+          <div class="metric-tile warm"><div class="metric-val">300</div><div class="metric-name">Per Class</div></div>
+          <div class="metric-tile purple"><div class="metric-val">6</div><div class="metric-name">Classes</div></div>
+          <div class="metric-tile"><div class="metric-val">Balanced</div><div class="metric-name">Distribution</div></div>
+        </div>
+        <p style="font-size:13px;color:var(--muted);line-height:1.7;margin-top:8px">
+          All class weights are <code style="font-family:var(--mono);color:var(--text)">1.0</code> since the dataset is balanced. 
+          Train/Val/Test split: <code style="font-family:var(--mono);color:var(--text)">70% / 15% / 15%</code> → 1260 / 270 / 270 images.
+        </p>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ── Tab switching ──
+function switchTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.querySelector(`[data-tab="${name}"]`).classList.add('active');
+}
+
+// ── Command builders ──
+function updateCmd() {
+  const arch    = document.getElementById('arch').value;
+  const epochs  = document.getElementById('epochs').value;
+  const bs      = document.getElementById('batchSize').value;
+  const lr      = document.getElementById('lr').value;
+  const wd      = document.getElementById('wd').value;
+  const freeze  = document.getElementById('freezeEpochs').value;
+  const pat     = document.getElementById('patience').value;
+  const pre     = document.getElementById('pretrained').checked;
+  const smooth  = document.getElementById('labelSmooth').checked;
+  const resume  = document.getElementById('resumeCkpt').value.trim();
+
+  let cmd = `python src/train.py --arch ${arch} --epochs ${epochs} --batch_size ${bs} --lr ${lr} --weight_decay ${wd} --freeze_epochs ${freeze} --patience ${pat}`;
+  if (!pre) cmd += ' --no_pretrained';
+  if (!smooth) cmd += ' --no_label_smoothing';
+  if (resume) cmd += ` --resume ${resume}`;
+  document.getElementById('cmdText').textContent = cmd;
+}
+
+function updateEvalCmd() {
+  const ckpt  = document.getElementById('evalCkpt').value;
+  const split = document.getElementById('evalSplit').value;
+  const bs    = document.getElementById('evalBatch').value;
+  const tta   = document.getElementById('evalTTA').checked;
+  let cmd = `python src/evaluate.py --checkpoint ${ckpt} --split ${split} --batch_size ${bs}`;
+  if (tta) cmd += ' --tta';
+  document.getElementById('evalCmdText').textContent = cmd;
+}
+
+function updatePredCmd() {
+  const ckpt   = document.getElementById('predCkpt').value;
+  const inp    = document.getElementById('predInput').value;
+  const topk   = document.getElementById('predTopK').value;
+  const gcam   = document.getElementById('predGradcam').checked;
+  const json_  = document.getElementById('predJson').checked;
+  let cmd = `python src/predict.py --checkpoint ${ckpt} --input ${inp} --topk ${topk}`;
+  if (gcam) cmd += ' --gradcam';
+  if (json_) cmd += ' --save_json';
+  document.getElementById('predCmdText').textContent = cmd;
+}
+
+function updateExpCmd() {
+  const ckpt  = document.getElementById('expCkpt').value;
+  const out   = document.getElementById('expOut').value;
+  const opset = document.getElementById('expOpset').value;
+  document.getElementById('expCmdText').textContent =
+    `python scripts/export_onnx.py --checkpoint ${ckpt} --output ${out} --opset ${opset}`;
+}
+
+function copyCmd()     { navigator.clipboard.writeText(document.getElementById('cmdText').textContent);     flash('Copied!'); }
+function copyEvalCmd() { navigator.clipboard.writeText(document.getElementById('evalCmdText').textContent); flash('Copied!'); }
+function copyPredCmd() { navigator.clipboard.writeText(document.getElementById('predCmdText').textContent); flash('Copied!'); }
+function copyExpCmd()  { navigator.clipboard.writeText(document.getElementById('expCmdText').textContent);  flash('Copied!'); }
+
+function flash(msg) {
+  const el = document.createElement('div');
+  el.textContent = msg;
+  Object.assign(el.style, {
+    position:'fixed', bottom:'24px', right:'24px', background:'var(--accent)',
+    color:'var(--bg)', fontFamily:'var(--mono)', fontSize:'12px', padding:'8px 16px',
+    borderRadius:'4px', zIndex:'9999', transition:'opacity .3s'
+  });
+  document.body.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 1500);
+}
+
+// ── Log helpers ──
+function ts() { return new Date().toTimeString().slice(0,8); }
+
+function appendLog(termId, type, msg) {
+  const term = document.getElementById(termId);
+  // remove cursor from last line
+  const cursor = term.querySelector('.cursor');
+  if (cursor) cursor.remove();
+  const line = document.createElement('span');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="ts">[${ts()}]</span> <span class="${type}">${msg}</span>`;
+  term.appendChild(line);
+  term.appendChild(document.createTextNode('\n'));
+  const newCursor = document.createElement('span');
+  newCursor.className = 'log-line';
+  newCursor.innerHTML = '<span class="cursor"></span>';
+  term.appendChild(newCursor);
+  term.scrollTop = term.scrollHeight;
+}
+
+function clearLog()     { document.getElementById('trainLog').innerHTML = ''; }
+function clearEvalLog() { document.getElementById('evalLog').innerHTML = ''; }
+
+// ── Training simulation ──
+let simRunning = false;
+let simTimer = null;
+
+function startSimulation() {
+  if (simRunning) return;
+  simRunning = true;
+  document.getElementById('stopBtn').disabled = false;
+  document.getElementById('liveMetrics').style.display = 'block';
+  clearLog();
+
+  const arch   = document.getElementById('arch').value;
+  const epochs = parseInt(document.getElementById('epochs').value);
+  const lr     = parseFloat(document.getElementById('lr').value);
+
+  appendLog('trainLog', 'info',    `Initialising ${arch} backbone`);
+  appendLog('trainLog', 'info',    `Epochs: ${epochs}  LR: ${lr}  Device: CPU`);
+  appendLog('trainLog', 'success', 'Model built and moved to device');
+  appendLog('trainLog', 'info',    'Loading dataset from data/splits/');
+  appendLog('trainLog', 'success', 'Train: 1260 images  Val: 270 images');
+
+  let ep = 0;
+  let step = 0;
+  const stepsPerEpoch = 158; // 1260/8
+
+  // Simulated metric curves
+  const trainLosses = [];
+  const valLosses   = [];
+  const accs        = [];
+  for (let i = 0; i < epochs; i++) {
+    const progress = i / Math.max(epochs - 1, 1);
+    trainLosses.push((1.8 - 1.4 * progress + (Math.random() - .5) * .15).toFixed(4));
+    valLosses.push((1.9 - 1.35 * progress + (Math.random() - .5) * .12).toFixed(4));
+    accs.push(((0.3 + 0.6 * progress + (Math.random() - .5) * .05) * 100).toFixed(1));
+  }
+
+  function tick() {
+    if (!simRunning) return;
+    step++;
+    const epochProgress = (step % stepsPerEpoch) / stepsPerEpoch;
+    if (step % stepsPerEpoch === 0) {
+      ep++;
+      if (ep > epochs) { finishSim(); return; }
+      const tl  = trainLosses[ep - 1];
+      const vl  = valLosses[ep - 1];
+      const acc = accs[ep - 1];
+      const f1  = (parseFloat(acc) / 100 - .02 + (Math.random() - .5) * .01).toFixed(4);
+      const lrNow = (lr * Math.pow(0.95, ep)).toExponential(2);
+
+      document.getElementById('liveEpoch').textContent = `${ep}/${epochs}`;
+      document.getElementById('liveLoss').textContent   = tl;
+      document.getElementById('liveValLoss').textContent = vl;
+      document.getElementById('liveAcc').textContent    = acc + '%';
+      document.getElementById('liveF1').textContent     = f1;
+      document.getElementById('liveLR').textContent     = lrNow;
+
+      const overallPct = Math.round((ep / epochs) * 100);
+      document.getElementById('overallBar').style.width = overallPct + '%';
+      document.getElementById('overallPct').textContent = overallPct + '%';
+
+      const isBest = ep === Math.ceil(epochs * .8);
+      appendLog('trainLog', 'info',
+        `Epoch ${ep}/${epochs} — loss: ${tl}  val_loss: ${vl}  val_acc: ${acc}%  f1: ${f1}`);
+      if (isBest) appendLog('trainLog', 'success', `✓ New best model saved → models/checkpoints/best_model.pth`);
+      if (ep % 5 === 0) appendLog('trainLog', 'info', `Checkpoint saved → ckpt_ep${String(ep).padStart(3,'0')}.pth`);
+    }
+
+    const pct = Math.round(epochProgress * 100);
+    document.getElementById('epochBar').style.width = pct + '%';
+    document.getElementById('epochPct').textContent = pct + '%';
+
+    const delay = simRunning ? Math.max(20, 80 - epochs * 1.2) : 0;
+    simTimer = setTimeout(tick, delay);
+  }
+
+  simTimer = setTimeout(tick, 400);
+}
+
+function finishSim() {
+  simRunning = false;
+  document.getElementById('stopBtn').disabled = true;
+  appendLog('trainLog', 'success', 'Training complete!');
+  appendLog('trainLog', 'success', 'Best model → models/checkpoints/best_model.pth');
+  document.getElementById('ckptStatus').textContent = 'best_model.pth';
+  document.getElementById('ckptStatus').className = 'status-chip ok';
+}
+
+function stopSimulation() {
+  if (simTimer) clearTimeout(simTimer);
+  simRunning = false;
+  document.getElementById('stopBtn').disabled = true;
+  appendLog('trainLog', 'warn', 'Training stopped by user.');
+}
+
+// ── Eval simulation ──
+function runEvalSim() {
+  clearEvalLog();
+  appendLog('evalLog', 'info', 'Loading checkpoint…');
+
+  const classes = ['Crazing','Inclusion','Patches','Pitted_surface','Rolled-in_scale','Scratches'];
+  const f1s     = [0.961, 0.943, 0.957, 0.938, 0.972, 0.965];
+  const colors  = ['#00e5ff','#a78bfa','#22c55e','#f59e0b','#ff4c6a','#3b82f6'];
+
+  setTimeout(() => appendLog('evalLog', 'info', 'Dataset loaded — 270 test images'), 400);
+  setTimeout(() => appendLog('evalLog', 'info', 'Running inference…'), 900);
+  setTimeout(() => {
+    appendLog('evalLog', 'success', 'Inference complete.');
+    appendLog('evalLog', 'info', '              precision  recall  f1-score  support');
+    classes.forEach((c, i) => {
+      const p = (f1s[i] + (Math.random()-.5)*.01).toFixed(2);
+      const r = (f1s[i] + (Math.random()-.5)*.01).toFixed(2);
+      appendLog('evalLog', 'info', `  ${c.padEnd(20)} ${p}      ${r}    ${f1s[i]}      45`);
+    });
+    appendLog('evalLog', 'success', `macro avg F1: ${(f1s.reduce((a,b)=>a+b)/f1s.length).toFixed(4)}`);
+
+    // Show result tiles
+    document.getElementById('evalResults').style.display = 'block';
+    document.getElementById('top1').textContent    = '95.9%';
+    document.getElementById('top2').textContent    = '99.3%';
+    document.getElementById('macroF1').textContent = '0.9560';
+
+    const barsEl = document.getElementById('classF1Bars');
+    barsEl.innerHTML = '';
+    classes.forEach((c, i) => {
+      const pct = Math.round(f1s[i] * 100);
+      barsEl.innerHTML += `
+        <div class="class-row">
+          <span class="class-name">${c}</span>
+          <div class="class-bar-wrap">
+            <div class="class-bar-fill" style="width:0%;background:${colors[i]}" data-w="${pct}%"></div>
+          </div>
+          <span class="class-val">${f1s[i]}</span>
+        </div>`;
+    });
+    setTimeout(() => {
+      barsEl.querySelectorAll('.class-bar-fill').forEach(b => b.style.width = b.dataset.w);
+    }, 50);
+
+    appendLog('evalLog', 'success', 'Reports saved → results/reports/');
+  }, 1800);
+}
+
+// ── Predict simulation ──
+function runPredSim() {
+  const logEl = document.getElementById('predLog');
+  logEl.innerHTML = '';
+  appendLog('predLog', 'info', 'Loading checkpoint…');
+  setTimeout(() => appendLog('predLog', 'success', 'Model loaded.'), 400);
+  setTimeout(() => {
+    const input = document.getElementById('predInput').value;
+    appendLog('predLog', 'info', `Processing: ${input.split('/').pop()}`);
+  }, 800);
+  setTimeout(() => {
+    appendLog('predLog', 'success', 'Crazing                  conf: 97.3%');
+    appendLog('predLog', 'info',    'Top-3: Crazing:0.97  Scratches:0.02  Inclusion:0.01');
+    const gcam = document.getElementById('predGradcam').checked;
+    if (gcam) appendLog('predLog', 'success', 'Grad-CAM saved → results/predictions/gradcam_crazing_10.png');
+    appendLog('predLog', 'success', 'Done.');
+  }, 1400);
+}
+
+// ── Export simulation ──
+function runExpSim() {
+  const logEl = document.getElementById('expLog');
+  logEl.innerHTML = '';
+  appendLog('expLog', 'info', 'Loading checkpoint…');
+  setTimeout(() => appendLog('expLog', 'info', 'Auto-detecting architecture from state_dict keys…'), 500);
+  setTimeout(() => appendLog('expLog', 'warn', 'Detected MobileNetV3 (model.features.*) — using torchvision backbone'), 900);
+  setTimeout(() => appendLog('expLog', 'success', 'Weights loaded successfully.'), 1200);
+  setTimeout(() => appendLog('expLog', 'info', 'Exporting to ONNX opset 17…'), 1600);
+  setTimeout(() => {
+    appendLog('expLog', 'success', '✓ ONNX model saved → ' + document.getElementById('expOut').value);
+    appendLog('expLog', 'success', '✓ ONNX verified  output shape: (1, 6)');
+    appendLog('expLog', 'info',    'Load in Python:');
+    appendLog('expLog', 'cmd',     '  sess = ort.InferenceSession("corrosion_detector.onnx")');
+    appendLog('expLog', 'cmd',     '  logits = sess.run(["logits"], {"input": img})[0]');
+  }, 2200);
+}
+
+// ── Image drop & fake prediction ──
+const CLASSES = ['Crazing','Inclusion','Patches','Pitted_surface','Rolled-in_scale','Scratches'];
+const CLASS_COLORS_MAP = {
+  Crazing:'#e74c3c', Inclusion:'#e67e22', Patches:'#f1c40f',
+  Pitted_surface:'#2ecc71', 'Rolled-in_scale':'#3498db', Scratches:'#9b59b6'
+};
+
+function handleImageDrop(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('predImg').src = ev.target.result;
+    const predIdx = Math.floor(Math.random() * 6);
+    const pred    = CLASSES[predIdx];
+    const conf    = (0.7 + Math.random() * 0.28).toFixed(4);
+    const color   = CLASS_COLORS_MAP[pred];
+
+    document.getElementById('predResult').classList.add('show');
+    document.getElementById('predLabel').textContent  = pred;
+    document.getElementById('predLabel').style.color  = color;
+    document.getElementById('predConf').textContent   = `confidence: ${(conf*100).toFixed(1)}%`;
+
+    // Generate fake prob distribution
+    const probs = CLASSES.map((_, i) => i === predIdx ? parseFloat(conf) : Math.random() * (1 - conf) / 5);
+    const sum   = probs.reduce((a,b) => a+b, 0);
+    const norm  = probs.map(p => p / sum);
+
+    const barsEl = document.getElementById('predBars');
+    barsEl.innerHTML = '';
+    CLASSES.forEach((c, i) => {
+      const pct = Math.round(norm[i] * 100);
+      barsEl.innerHTML += `
+        <div class="class-row" style="margin-bottom:6px">
+          <span class="class-name" style="color:${i===predIdx?CLASS_COLORS_MAP[c]:'var(--muted)'}">${c}</span>
+          <div class="class-bar-wrap"><div class="class-bar-fill" style="width:0%;background:${CLASS_COLORS_MAP[c]}" data-w="${pct}%"></div></div>
+          <span class="class-val">${(norm[i]*100).toFixed(1)}%</span>
+        </div>`;
+    });
+    setTimeout(() => {
+      barsEl.querySelectorAll('.class-bar-fill').forEach(b => b.style.width = b.dataset.w);
+    }, 50);
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── Config YAML generator ──
+function markChanged(el) { el.classList.add('config-field-changed'); }
+
+function generateYAML() {
+  const arch    = document.getElementById('cfgArch').value;
+  const pre     = document.getElementById('cfgPretrained').value;
+  const drop    = document.getElementById('cfgDropout').value;
+  const nc      = document.getElementById('cfgNumClasses').value;
+  const imgSz   = document.getElementById('cfgImgSize').value;
+  const tr      = document.getElementById('cfgTrainRatio').value;
+  const vr      = document.getElementById('cfgValRatio').value;
+  const ep      = document.getElementById('cfgEpochs').value;
+  const bs      = document.getElementById('cfgBatch').value;
+  const lr      = document.getElementById('cfgLR').value;
+  const wd      = document.getElementById('cfgWD').value;
+  const pat     = document.getElementById('cfgPatience').value;
+  const fr      = document.getElementById('cfgFreezeEp').value;
+  const sm      = document.getElementById('cfgSmoothing').value;
+  const sv      = document.getElementById('cfgSaveEvery').value;
+
+  const yaml = `# configs/config.yaml
+# Generated by Control Panel
+
+data:
+  raw_dir:      "data/raw"
+  split_dir:    "data/splits"
+  image_size:   ${imgSz}
+  num_classes:  ${nc}
+  class_names:
+    - "Crazing"
+    - "Inclusion"
+    - "Patches"
+    - "Pitted_surface"
+    - "Rolled-in_scale"
+    - "Scratches"
+  class_weights: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+  train_ratio: ${tr}
+  val_ratio:   ${vr}
+
+model:
+  architecture: "${arch}"
+  pretrained:   ${pre}
+  dropout:      ${drop}
+
+training:
+  epochs: ${ep}
+  batch_size: ${bs}
+  lr: ${lr}
+  weight_decay: ${wd}
+  num_workers: 0
+  patience: ${pat}
+  save_every: ${sv}
+  checkpoint_dir: "models/checkpoints"
+  label_smoothing: ${sm}
+  freeze_epochs: ${fr}
+
+augmentation:
+  random_horizontal_flip: true
+  random_vertical_flip:   true
+  random_rotation:        15
+  color_jitter:
+    brightness: 0.3
+    contrast:   0.3
+    saturation: 0.2
+    hue:        0.05
+  random_grayscale_p: 0.1
+  random_erasing_p:   0.2
+
+logging:
+  log_dir:          "logs"
+  tensorboard_dir:  "logs/tensorboard"
+
+inference:
+  threshold:  0.5
+  output_dir: "results/predictions"
+  gradcam:    true`;
+
+  const out = document.getElementById('yamlOut');
+  out.style.display = 'block';
+  out.textContent = yaml;
+}
+
+function copyYAML() {
+  const out = document.getElementById('yamlOut');
+  if (out.style.display === 'none') generateYAML();
+  navigator.clipboard.writeText(out.textContent);
+  flash('YAML Copied!');
+}
+
+// ── Classes panel ──
+function buildClassRef() {
+  const classes = ['Crazing','Inclusion','Patches','Pitted_surface','Rolled-in_scale','Scratches'];
+  const descs   = [
+    'Surface cracks in fine network pattern',
+    'Embedded foreign particles in steel',
+    'Irregular bright/dark patches on surface',
+    'Small pits and cavities on surface',
+    'Scale pressed into surface during rolling',
+    'Linear surface scratches from tooling',
+  ];
+  const colors  = ['#e74c3c','#e67e22','#f1c40f','#2ecc71','#3498db','#9b59b6'];
+  const el = document.getElementById('classRef');
+  el.innerHTML = classes.map((c, i) => `
+    <div class="class-row" style="margin-bottom:12px;align-items:flex-start">
+      <span class="class-name" style="color:${colors[i]};font-weight:700">${c}</span>
+      <div style="flex:1">
+        <div class="class-bar-wrap"><div class="class-bar-fill" style="width:100%;background:${colors[i]}"></div></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">${descs[i]}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ── Init ──
+updateCmd();
+updateEvalCmd();
+updatePredCmd();
+updateExpCmd();
+buildClassRef();
+</script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+# ================================================================
+#  NEU Surface Defect Detection — Requirements
+#  Deep Learning-Based Surface Corrosion Detection Using CNN
+#  Compatible: Python 3.9 / 3.10 / 3.11
+# ================================================================
+
+# ── Core Deep Learning ──────────────────────────────────────────
+torch>=2.1.0
+torchvision>=0.16.0
+torchaudio>=2.1.0
+
+# ── Scientific Stack ────────────────────────────────────────────
+numpy>=1.24.4
+pandas>=2.0.3
+scipy>=1.11.4
+scikit-learn>=1.3.2
+
+# ── Image Processing & Augmentation ────────────────────────────
+Pillow>=10.1.0
+opencv-python>=4.8.1.78
+albumentations>=1.3.1
+
+# ── Visualisation ───────────────────────────────────────────────
+matplotlib>=3.7.4
+seaborn>=0.13.0
+plotly>=5.18.0
+
+# ── Training Utilities ──────────────────────────────────────────
+tensorboard>=2.15.0
+tqdm>=4.66.1
+pyyaml>=6.0.1
+python-dotenv>=1.0.0
+
+# ── Kaggle API (dataset download) ───────────────────────────────
+kaggle>=1.6.3
+
+# ── Notebook Support ────────────────────────────────────────────
+jupyter>=1.0.0
+ipykernel>=6.27.0
+ipywidgets>=8.1.1
+
+# ── Model Export & Deployment ───────────────────────────────────
+onnx>=1.15.0
+onnxruntime>=1.16.3
+
+# ── Testing & Code Quality ──────────────────────────────────────
+pytest>=7.4.3
+pytest-cov>=4.1.0
+black>=23.11.0
+flake8>=6.1.0

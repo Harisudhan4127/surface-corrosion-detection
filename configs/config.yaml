@@ -1,0 +1,61 @@
+# configs/config.yaml
+# ================================================================
+#  NEU Surface Defect — Master Configuration
+# ================================================================
+
+data:
+  raw_dir:      "data/raw"           # extracted Kaggle zip lands here
+  split_dir:    "data/splits"        # train/val/test after split
+  image_size:   224                  # resize from 200×200
+  num_classes:  6
+  class_names:
+    - "Crazing"      # Cr
+    - "Inclusion"    # In
+    - "Patches"      # Pa
+    - "Pitted_surface"  # Ps
+    - "Rolled-in_scale" # Rs
+    - "Scratches"    # Sc
+  # All classes equally weighted (dataset is balanced: 300 / class)
+  class_weights: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+  train_ratio: 0.70
+  val_ratio:   0.15
+  # test_ratio = remaining 0.15
+
+model:
+  architecture: "resnet50"    # resnet50 | resnet18 | efficientnet_b3 | custom_cnn
+  pretrained:   true          # ImageNet pretrained weights
+  # freeze_epochs: 5            # freeze backbone for N epochs, then unfreeze
+  dropout:      0.4
+
+training:
+  epochs: 60
+  batch_size: 8
+  lr: 0.0001
+  weight_decay: 0.0001
+  num_workers: 0
+  patience: 15
+  save_every: 5
+  checkpoint_dir: "models/checkpoints"
+  label_smoothing: 0.1
+  freeze_epochs: 5
+
+augmentation:
+  random_horizontal_flip: true
+  random_vertical_flip:   true
+  random_rotation:        15
+  color_jitter:
+    brightness: 0.3
+    contrast:   0.3
+    saturation: 0.2
+    hue:        0.05
+  random_grayscale_p: 0.1
+  random_erasing_p:   0.2
+
+logging:
+  log_dir:          "logs"
+  tensorboard_dir:  "logs/tensorboard"
+
+inference:
+  threshold:  0.5
+  output_dir: "results/predictions"
+  gradcam:    true
